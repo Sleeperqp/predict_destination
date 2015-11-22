@@ -113,7 +113,8 @@ def s_meanshif(filepath):
     datas = np.array(datas)
     # The following bandwidth can be automatically detected using
     bandwidth = estimate_bandwidth(datas, quantile=0.2, n_samples=100000)
-
+    print bandwidth
+    bandwidth = 0.005
     ms = MeanShift(bandwidth=bandwidth, bin_seeding=True, min_bin_freq=5)
     ms.fit(datas)
     labels = ms.labels_
@@ -121,7 +122,7 @@ def s_meanshif(filepath):
 
     labels_unique = np.unique(labels)
     n_clusters_ = len(labels_unique)
-
+    print 'cluster num:',n_clusters_, labels_unique
     geo_data = {'lat':[],'lon':[]}
     for xy in cluster_centers:
         x, y = xy[0],xy[1]
@@ -130,7 +131,7 @@ def s_meanshif(filepath):
 
     #print geo_data
     geoplotlib.dot(geo_data)
-    geoplotlib.show()
+    #geoplotlib.show()
 
     print("number of estimated clusters : %d" % n_clusters_)
 
