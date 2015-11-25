@@ -7,15 +7,13 @@ import json
 #                                       [[trip_id1],[x1,y1]],
 #                                       [[trip_id2],[x2,y2]...
 #                                       ]
-def deal_des(filepath, outpath="../../data/des.csv"):
+def deal_trip(filepath, outpath="../../data/des.csv"):
     rowlist =['TRIP_ID','POLYLINE']
     datas = read_csvfile(filepath, rowlist)
     out = open(outpath, "w")
 
     trip = []
     i = 0
-    blank = 0
-    errornum = 0
     for line in datas['POLYLINE']:
         data = []
         data.append([datas['TRIP_ID'][i]])
@@ -26,15 +24,11 @@ def deal_des(filepath, outpath="../../data/des.csv"):
                 out.write(str(datas['TRIP_ID'][i])+" "+str(x)+" "+str(y)+"\n")
                 data.append(tmplist[-1])
                 trip.append(data)
-            else:
-                blank += 1
         except :
             print tmplist
-            errornum += 1
-
         i += 1
-    print "blank:",blank,"valid:",len(trip),"error:",errornum
+    print len(trip)
     return trip
 
 if __name__=='__main__':
-    deal_des("../../data/train.csv")
+    deal_trip("../../data/train.csv")
