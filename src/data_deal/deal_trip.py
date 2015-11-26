@@ -7,28 +7,54 @@ import json
 #                                       [[trip_id1],[x1,y1]],
 #                                       [[trip_id2],[x2,y2]...
 #                                       ]
-def deal_trip(filepath, outpath="../../data/des.csv"):
+def deal_trip(filepath, outpath="../../data/train_trip.csv"):
     rowlist =['TRIP_ID','POLYLINE']
     datas = read_csvfile(filepath, rowlist)
     out = open(outpath, "w")
 
-    trip = []
+    #trip = []
     i = 0
     for line in datas['POLYLINE']:
-        data = []
-        data.append([datas['TRIP_ID'][i]])
-        tmplist = json.loads(line)
+        line = json.loads(line)
         try:
-            if tmplist:
-                x, y = tmplist[-1][0], tmplist[-1][1]
-                out.write(str(datas['TRIP_ID'][i])+" "+str(x)+" "+str(y)+"\n")
-                data.append(tmplist[-1])
-                trip.append(data)
+            lenght = len(line)
+            if lenght < 10:
+                continue
+            else:
+                if lenght < 34:
+                    data = []
+                    data.append([datas['TRIP_ID'][i]])
+                    data.append(line[0:5]+line[-5:])
+                    #print data
+                    #trip.append(data)
+                    out.write(json.dumps(data)+"\n")
+                if 34 < lenght:
+                    data = []
+                    data.append([datas['TRIP_ID'][i]])
+                    data.append(line[0:5]+line[int(lenght*0.3)-5:int(lenght*0.3)])
+                    #print data
+                    #trip.append(data)
+                    out.write(json.dumps(data)+"\n")
+                if 70 < lenght:
+                    data = []
+                    data.append([datas['TRIP_ID'][i]])
+                    data.append(line[0:5]+line[int(lenght*0.6)-5:int(lenght*0.6)])
+                    #print data
+                    #trip.append(data)
+                    out.write(json.dumps(data)+"\n")
+                if 100 < lenght:
+                    data = []
+                    data.append([datas['TRIP_ID'][i]])
+                    data.append(line[0:5]+line[int(lenght*0.8)-5:int(lenght*0.8)])
+                    #print data
+                    #trip.append(data)
+                    out.write(json.dumps(data)+"\n")
+
         except :
-            print tmplist
+            print line
         i += 1
-    print len(trip)
-    return trip
+    #print len(trip)
+    #return trip
 
 if __name__=='__main__':
     deal_trip("../../data/train.csv")
