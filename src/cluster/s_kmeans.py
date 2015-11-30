@@ -137,7 +137,7 @@ def s_meanshif(filepath,labelpath="../../data/label.csv", label_despath="../../d
     #得到meanshift所需的bandwidth
     bandwidth = estimate_bandwidth(des, quantile=0.2, n_samples=100000)
     #print bandwidth
-    bandwidth = 0.005
+    bandwidth = 0.001
     #得到meanShift模型并进行训练
     ms = MeanShift(bandwidth=bandwidth, bin_seeding=True, min_bin_freq=5)
     ms.fit(des)
@@ -145,7 +145,7 @@ def s_meanshif(filepath,labelpath="../../data/label.csv", label_despath="../../d
     #得到训练的标签以及类别中心点坐标
     labels = ms.labels_
     cluster_centers = ms.cluster_centers_
-
+    print "样本个数:",len(labels)
     #存储每个类别对应的中心坐标
     out = open(labelpath,"w")
     i = 0
@@ -168,7 +168,7 @@ def s_meanshif(filepath,labelpath="../../data/label.csv", label_despath="../../d
     #print ress
     labels_unique = np.unique(labels)
     n_clusters_ = len(labels_unique)
-    print 'cluster num:',n_clusters_, labels_unique
+    print 'cluster num:',n_clusters_
 
     #对聚类效果进行可视化
     geo_data = {'lat':[],'lon':[]}
