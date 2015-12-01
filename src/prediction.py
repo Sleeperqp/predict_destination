@@ -8,7 +8,7 @@ from pybrain.utilities import percentError
 import json
 
 def import_data(train_file_path='../data/train_trip.csv'):
-    dataset = ClassificationDataSet(26, 1, nb_classes=3456, class_labels='class')
+    dataset = ClassificationDataSet(26, 1, nb_classes=3456)
     train_file = open(train_file_path, "r")
 
     for line in train_file:
@@ -36,9 +36,21 @@ def mlp():
     mlp = buildNetwork(26, 500, 3456, bias=True, outclass=SoftmaxLayer)
     #print net['in'], net['hidden0'],  net['out']
     ds = import_data()
-    trndata, tstdata = ds.splitWithProportion(0.8)
+    #http://stackoverflow.com/questions/27887936/attributeerror-using-pybrain-splitwithportion-object-type-changed
+    tstdata_temp, trndata_temp = ds.splitWithProportion(0.25)
+
+    tstdata = ClassificationDataSet(26, 1, nb_classes=3456)
+    for n in xrange(0, tstdata_temp.getLength()):
+        tstdata.addSample(tstdata_temp.getSample(n)[0], tstdata_temp.getSample(n)[1])
+
+    trndata = ClassificationDataSet(26, 1, nb_classes=3456)
+    for n in xrange(0, trndata_temp.getLength()):
+        trndata.addSample(trndata_temp.getSample(n)[0], trndata_temp.getSample(n)[1])
+
     trndata._convertToOneOfMany()
     tstdata._convertToOneOfMany()
+
+    print type(trndata['class'])
 
 
     print "Number of training patterns: ", len(trndata)
