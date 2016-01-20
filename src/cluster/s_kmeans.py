@@ -68,7 +68,7 @@ def read_csvfile(filepath):
 def draw_kmeans(tor,datas):
     x_min, x_max = datas[:, 0].min() , datas[:, 0].max()
     y_min, y_max = datas[:, 1].min() , datas[:, 1].max()
-    h = 0.001
+    h = 0.01
     xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
                      np.arange(y_min, y_max, h))
     Z = tor.predict(np.c_[xx.ravel(), yy.ravel()])
@@ -137,7 +137,7 @@ def s_meanshif(filepath,labelpath="../../data/label.csv", label_despath="../../d
     #得到meanshift所需的bandwidth
     bandwidth = estimate_bandwidth(des, quantile=0.2, n_samples=100000)
     #print bandwidth
-    bandwidth = 0.001
+    bandwidth = 0.008
     #得到meanShift模型并进行训练
     ms = MeanShift(bandwidth=bandwidth, bin_seeding=True, min_bin_freq=5)
     ms.fit(des)

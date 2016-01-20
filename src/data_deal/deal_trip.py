@@ -25,7 +25,7 @@ import time
 
 
 def deal_trip(filepath, outpath="../../data/train_trip.csv"):
-    rowlist =["TRIP_ID","CALL_TYPE","TAXI_ID","TIMESTAMP","POLYLINE"]
+    rowlist = ["TRIP_ID", "CALL_TYPE", "TAXI_ID", "TIMESTAMP", "DAY_TYPE", "POLYLINE"]
     datas = read_csvfile(filepath, rowlist)
 
     label_file = open("../../data/label_des.csv","r")
@@ -91,6 +91,7 @@ def trip_unit(row):
     data.append(row['TRIP_ID'])
     data.append(row['CALL_TYPE'])
     data.append(row['TAXI_ID'])
+    data.append(row['DAY_TYPE'])
     line = row['TIMESTAMP']
     try:
         if line:
