@@ -5,6 +5,7 @@ import json
 import random
 import sys
 import gnumpy as gnp
+import svm_time
 from collections import defaultdict
 
 
@@ -12,12 +13,16 @@ def total_M(inputpath="../../data/grid_trip.csv"):
     input = open(inputpath)
     grid_2_id = {}
     id_2_grid = {}
-    M = np.zeros((1568, 1568))
+    M = np.zeros((1584, 1584))
     i_in_Trip = defaultdict(int)
     des = defaultdict(int)
     des_num = 0
 
+    # svm训练数据集
+    svm_data = []
+
     test_data = []
+    test_time = []
     test_des = []
     trip_data = []
     test_num = 0
@@ -34,12 +39,15 @@ def total_M(inputpath="../../data/grid_trip.csv"):
                     id_2_grid[id] = data
                     id += 1
             test_data.append(datas)
+            test_time.append(json.loads(line[2]))
             test_des.append(grid_2_id[datas[-1]])
             test_num += 1
             continue
         # print datas
 
         trip_data.append(datas)
+        if len(datas) >= 4:
+            svm_data.append([datas, json.loads(line[2])])
         # 计算转移矩阵
         pre = -1
         for data in datas:
@@ -64,10 +72,10 @@ def total_M(inputpath="../../data/grid_trip.csv"):
     print max_len
 
     # 计算p_(ij)
-    for i in range(0, 1568):
+    for i in range(0, 1584):
         if i_in_Trip[i] == 0:
             continue
-        for j in range(0, 1568):
+        for j in range(0, 1584):
             try:
                 M[i, j] = M[i, j] / i_in_Trip[i]
             except:
@@ -81,15 +89,15 @@ def total_M(inputpath="../../data/grid_trip.csv"):
         if ans < des[i]:
             ans = des[i]
     #print ans, ans * des_num
-
-    return M, grid_2_id, id_2_grid, test_data, trip_data, test_des, des
+    print len(svm_data)
+    return M, grid_2_id, id_2_grid, test_data, trip_data, test_des, des, svm_data, test_time
 
 
 def compute_A(M):
     print 'computing A'
     A = []
     Mpow = gnp.garray(M)
-    A.append(gnp.garray(np.eye(1568)))
+    A.append(gnp.garray(np.eye(1584)))
     # print np.max(A[0])
 
     for i in range(1, 120):
@@ -104,7 +112,7 @@ def compute_A(M):
 
 def compute_MT(A, M, grid_2_id, id_2_grid):
     print 'computing MT'
-    MT = np.zeros((1568, 1568))
+    MT = np.zeros((1584, 1584))
     sortlist = defaultdict(list)
 
     for i in id_2_grid:
@@ -117,8 +125,8 @@ def compute_MT(A, M, grid_2_id, id_2_grid):
             (lat2, lon2, lat_length, lon_length) = gh._decode_c2i(y)
             sortlist[(abs(lat1 - lat2) + abs(lon1 - lon2))].append([i, j])
 
-    # Mpow = np.eye(1568)
-    Mpow = gnp.garray(np.eye(1568))
+    # Mpow = np.eye(1584)
+    Mpow = gnp.garray(np.eye(1584))
     M = gnp.garray(M)
     #print Mpow
     for i in sortlist:
@@ -174,7 +182,7 @@ def ZMDB(test_data, trip_data, test_des, id_2_grid):
             # print num
             max_P = -1
             max_ID = -1
-            # 对每个目的地而言, P(n^j | T^end(np.eye(1568))p)
+            # 对每个目的地而言, P(n^j | T^end(np.eye(1584))p)
             P = defaultdict(float)
             for i in des_num:
                 P[i] = des_num[i] * 1.0 / num
@@ -227,12 +235,14 @@ def ZMDB(test_data, trip_data, test_des, id_2_grid):
     print total_km * 1.0 / len(test_des)
 
 
-def subsyn(test_data, trip_data, test_des, M, MT, des):
+def subsyn(test_data, trip_data, test_des, M, MT, des, test_time, id_2_grid):
     print 'subsyn'
 
     idx = 0
     total_error = []
     total_km = 0
+    gtotal_error = []
+    gtotal_km = 0
     for datas in test_data:
         # 计算P(Tp)
         # Ptp = 100000000
@@ -258,11 +268,28 @@ def subsyn(test_data, trip_data, test_des, M, MT, des):
         for j in Ptpnj:
             P[j] = Ptpnj[j] * des[j]
             sum += P[j]
-
+        # 改进subsyn
+        gP = defaultdict(float)
+        tmp_time = []
+        for i in test_time[idx]:
+            tmp_time.append(int(i))
+        (lat1, lon1, lat_length, lon_length) = gh._decode_c2i(id_2_grid[datas[0]])
+        (lat2, lon2, lat_length, lon_length) = gh._decode_c2i(id_2_grid[datas[-1]])
+        predictdata = tmp_time + [lat1, lon1, lat2, lon2]
+        label = svm_time.predict_by_svm(data=[predictdata])
+        for j in Ptpnj:
+            gP[j] = Ptpnj[j] * des[j] * 0.7
+            if label[0] == j:
+                gP[j] += 0.3
+        gP = sorted(gP.iteritems(), key=lambda (k, v): (v, k), reverse=True)
         P = sorted(P.iteritems(), key=lambda (k, v): (v, k), reverse=True)
         Q = []
         for k, v in P:
             Q.append(int(k))
+
+        gQ = []
+        for k, v in gP:
+            gQ.append(int(k))
 
         # print test_des[idx], Q[:5]
         # 计算涵盖率
@@ -289,6 +316,35 @@ def subsyn(test_data, trip_data, test_des, M, MT, des):
         (lat1, lon1, lat_length, lon_length) = gh._decode_c2i(id_2_grid[int(test_des[idx])])
         (lat2, lon2, lat_length, lon_length) = gh._decode_c2i(id_2_grid[Q[0]])
         total_km += abs(lat1 - lat2) + abs(lon1 - lon2)
+
+        # 计算改进subsyn
+        # print test_des[idx], Q[:5]
+        # 计算涵盖率
+        yes_list = []
+        # print test_des[idx], Q[:5]
+        if test_des[idx] in gQ[:1]:
+            yes_list.append(1)
+        else:
+            yes_list.append(0)
+
+        if test_des[idx] in gQ[:3]:
+            yes_list.append(1)
+        else:
+            yes_list.append(0)
+
+        if test_des[idx] in gQ[:5]:
+            yes_list.append(1)
+        else:
+            yes_list.append(0)
+        # print data, max_ID, max_P, test_des[idx]
+        gtotal_error.append(yes_list)
+        # 计算误差曼哈顿距离
+        # print id_2_grid[int(test_des[idx])]
+        (lat1, lon1, lat_length, lon_length) = gh._decode_c2i(id_2_grid[int(test_des[idx])])
+        (lat2, lon2, lat_length, lon_length) = gh._decode_c2i(id_2_grid[gQ[0]])
+        gtotal_km += abs(lat1 - lat2) + abs(lon1 - lon2)
+
+
         idx += 1
 
     P1 = P3 = P5 = 0.0
@@ -299,6 +355,15 @@ def subsyn(test_data, trip_data, test_des, M, MT, des):
     print P1, P3, P5
     print P1 / len(test_des), P3 / len(test_des), P5 / len(test_des)
     print total_km * 1.0 / len(test_des)
+
+    P1 = P3 = P5 = 0.0
+    for data in gtotal_error:
+        P1 += data[0]
+        P3 += data[1]
+        P5 += data[2]
+    print P1, P3, P5
+    print P1 / len(test_des), P3 / len(test_des), P5 / len(test_des)
+    print gtotal_km * 1.0 / len(test_des)
 
 
 def geohash2id(datas, isTest=False):
@@ -314,7 +379,11 @@ def geohash2id(datas, isTest=False):
     return test
 
 
-def test(test_data, trip_data, grid_2_id, test_des, id_2_grid, M, MT, des):
+def subsyn_svm():
+    print 'subsyn svm'
+
+
+def test(test_data, trip_data, grid_2_id, test_des, id_2_grid, M, MT, des, test_time):
     # print len(test_data)
     # print len(trip_data)
 
@@ -323,16 +392,17 @@ def test(test_data, trip_data, grid_2_id, test_des, id_2_grid, M, MT, des):
 
     # test ZMDB
     # ZMDB([[1,2]],[[1,2,3],[2,1]])
-    ZMDB(test_data, trip_data, test_des, id_2_grid)
-    subsyn(test_data, trip_data, test_des, M, MT, des)
+    # ZMDB(test_data, trip_data, test_des, id_2_grid)
+    subsyn(test_data, trip_data, test_des, M, MT, des, test_time, id_2_grid)
 
 
 if __name__ == "__main__":
-    M, grid_2_id, id_2_grid, test_data, trip_data, test_des, des= total_M()
+    M, grid_2_id, id_2_grid, test_data, trip_data, test_des, des, svm_data, test_time = total_M()
+    #lin_clf = svm_time.class_by_time(svm_data, grid_2_id)
     A = compute_A(M)
     MT = compute_MT(A, M, grid_2_id, id_2_grid)
     # print test_des
-    test(test_data, trip_data, grid_2_id, test_des, id_2_grid, M, MT, des)
+    test(test_data, trip_data, grid_2_id, test_des, id_2_grid, M, MT, des, test_time)
     #print testINtrip([1,23,2], [1,23,4,2])
     # datas = ['ez3f5', 'ez3fj', 'ez3cu', 'ez3cg', 'ez3cv', 'ez3fk', 'ez3f7', 'ez3fm', 'ez3fh']
     # for i in datas:

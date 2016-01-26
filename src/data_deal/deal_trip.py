@@ -58,7 +58,7 @@ def deal_trip(filepath, outpath="../../data/train_trip.csv"):
                         trip_id, label = get_label(label_file.readline())
                         trip_id = int(trip_id)
                     data.append(label)
-                    out.write(json.dumps(data)+"\n")
+                    out.swrite(json.dumps(data) + "\n")
 
                 if 70 < lenght:
                     data = trip_unit(row)
